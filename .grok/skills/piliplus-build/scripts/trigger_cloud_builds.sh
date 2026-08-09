@@ -22,7 +22,7 @@ else
   ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 fi
 
-REPO="${REPO:-REPLACE_ME_OWNER/PiliPlus}"
+REPO="${REPO:-chocolatedesue/PiliPlus}"
 APP_ID="${CM_APP_ID:-REPLACE_ME_CM_APP_ID}"
 BRANCH="${BRANCH:-main}"
 

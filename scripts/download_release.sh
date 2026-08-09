@@ -11,7 +11,7 @@ set -euo pipefail
 TAG="${1:-v2.1.0}"
 OUT_DIR="${2:-./dist/${TAG}}"
 FILTER="${3:-all}" # all | arm64 | android | windows | macos
-REPO="${REPO:-REPLACE_ME_OWNER/PiliPlus}"
+REPO="${REPO:-chocolatedesue/PiliPlus}"
 
 if [[ "$REPO" == REPLACE_ME_OWNER/* ]]; then
   echo "warn: REPO is still placeholder ($REPO); set REPO=owner/PiliPlus" >&2

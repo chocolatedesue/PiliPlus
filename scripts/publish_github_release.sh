@@ -25,7 +25,7 @@ TAG="${1:?usage: $0 <tag> <assets-dir> [--notes-file path] [--title title]}"
 ASSETS_DIR="${2:?usage: $0 <tag> <assets-dir> [--notes-file path]}"
 shift 2
 
-REPO="${REPO:-REPLACE_ME_OWNER/PiliPlus}"
+REPO="${REPO:-chocolatedesue/PiliPlus}"
 NOTES_FILE=""
 TITLE="PiliPlus ${TAG}"
 
