@@ -56,6 +56,8 @@ abstract final class SettingBoxKey {
       banWordForRecommend = 'banWordForRecommend',
       applyFilterToRelatedVideos = 'applyFilterToRelatedVideos',
       autoUpdate = 'autoUpdate',
+      // One-shot migration: force autoUpdate off for pre-v2.3 installs (YQH-74).
+      autoUpdateOffMigratedV23 = 'autoUpdateOffMigratedV23',
       maxCacheSize = 'maxCacheSize',
       defaultShowComment = 'defaultShowComment',
       replySortType = 'replySortType',

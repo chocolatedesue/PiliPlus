@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/init.dart';
@@ -74,14 +73,22 @@ class HomeController extends GetxController
     } else {
       final tabs = GStorage.setting.get(SettingBoxKey.tabBarSort) as List?;
       if (tabs != null) {
-        this.tabs = tabs.map((i) => HomeTabType.values[i]).toList();
+        // History is Focus-home only (not a normal-mode home tab).
+        this.tabs = tabs
+            .map((i) => HomeTabType.values[i as int])
+            .where((e) => e != HomeTabType.history)
+            .toList();
+        if (this.tabs.isEmpty) {
+          this.tabs = HomeTabType.defaults;
+        }
       } else {
-        this.tabs = HomeTabType.values;
+        this.tabs = HomeTabType.defaults;
       }
     }
 
+    final rcmdIdx = tabs.indexOf(HomeTabType.rcmd);
     tabController = TabController(
-      initialIndex: max(0, tabs.indexOf(HomeTabType.rcmd)),
+      initialIndex: rcmdIdx >= 0 ? rcmdIdx : 0,
       length: tabs.length,
       vsync: this,
     );

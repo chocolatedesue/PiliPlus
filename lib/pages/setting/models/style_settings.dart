@@ -353,7 +353,7 @@ List<SettingsModel> get styleSettings => [
       '/barSetting',
       arguments: {
         'key': SettingBoxKey.tabBarSort,
-        'defaultBars': HomeTabType.values,
+        'defaultBars': HomeTabType.defaults,
         'title': '首页标签页',
       },
     ),

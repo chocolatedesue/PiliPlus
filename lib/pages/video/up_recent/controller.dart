@@ -16,6 +16,7 @@ class UpRecentController
   String? currAid;
   String? firstAid;
   String? lastAid;
+  /// Newest-publish first (API `order=pubdate`); no client re-sort (YQH-74).
   ArchiveOrderTypeApp order = .pubdate;
   int? count;
   bool isLoadPrevious = false;

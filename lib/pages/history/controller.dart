@@ -20,7 +20,10 @@ class HistoryController
     with GetSingleTickerProviderStateMixin {
   HistoryController(this.type);
 
-  late final baseCtr = Get.put(HistoryBaseController());
+  /// Shared across root / embedded / typed History surfaces. Permanent so a
+  /// disposing page never tears down base while another surface still uses it
+  /// (YQH-74 D2-history-embed).
+  late final baseCtr = Get.put(HistoryBaseController(), permanent: true);
 
   Account get account => baseCtr.account;
 

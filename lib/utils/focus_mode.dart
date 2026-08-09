@@ -10,17 +10,18 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
-/// Focus mode: slim UI (推荐 + 历史 + 我的), hide related feed,
+/// Focus mode: slim UI (首页=本地历史 + 我的), hide related feed,
 /// force background playback. User prefs under the toggled keys
 /// are left untouched — overrides are applied via [Pref] getters.
 abstract final class FocusMode {
+  /// Home already hosts history; omit bottom-bar history to avoid dual
+  /// [HistoryPage] / GetX contention (YQH-74 D2-nav 5a).
   static const List<NavigationBarType> navBars = [
     NavigationBarType.home,
-    NavigationBarType.history,
     NavigationBarType.mine,
   ];
 
-  static const List<HomeTabType> homeTabs = [HomeTabType.rcmd];
+  static const List<HomeTabType> homeTabs = [HomeTabType.history];
 
   static final RxBool enabled = Pref.enableFocusMode.obs;
 

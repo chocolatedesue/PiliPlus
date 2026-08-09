@@ -45,10 +45,10 @@ enum NavigationBarType implements EnumWithLabel {
 
   const NavigationBarType(this.label, this.icon, this.selectIcon, this.page);
 
-  /// Label shown in the shell; Focus mode renames 首页 → 推荐.
+  /// Label shown in the shell; Focus mode renames 首页 → 历史 (home hosts history).
   String get displayLabel {
     if (Pref.enableFocusMode && this == home) {
-      return '推荐';
+      return '历史';
     }
     return label;
   }

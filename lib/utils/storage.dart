@@ -10,6 +10,7 @@ import 'package:PiliPlus/utils/accounts/account_type_adapter.dart';
 import 'package:PiliPlus/utils/accounts/cookie_jar_adapter.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/set_int_adapter.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:hive_ce/hive.dart';
@@ -74,6 +75,13 @@ abstract final class GStorage {
       );
     } else {
       reply = null;
+    }
+
+    // Align legacy installs that still have autoUpdate=true with the
+    // product default (launch no longer auto-checks; UI switch off).
+    if (setting.get(SettingBoxKey.autoUpdateOffMigratedV23) != true) {
+      await setting.put(SettingBoxKey.autoUpdate, false);
+      await setting.put(SettingBoxKey.autoUpdateOffMigratedV23, true);
     }
   }
 

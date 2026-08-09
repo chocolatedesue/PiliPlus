@@ -9,7 +9,6 @@ import 'package:PiliPlus/common/widgets/scroll_physics.dart'
     show tabBarScrollPhysics;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models_new/history/list.dart';
-import 'package:PiliPlus/pages/history/base_controller.dart';
 import 'package:PiliPlus/pages/history/controller.dart';
 import 'package:PiliPlus/pages/history/widgets/item.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
@@ -18,9 +17,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class HistoryPage extends StatefulWidget {
-  const HistoryPage({super.key, this.type});
+  const HistoryPage({super.key, this.type, this.embedded = false});
 
   final String? type;
+
+  /// When true (e.g. Focus home tab), skip outer [SimpleScaffold]/AppBar to
+  /// avoid a double app bar under [HomePage]. History actions stay available
+  /// via an in-body toolbar.
+  final bool embedded;
 
   @override
   State<HistoryPage> createState() => _HistoryPageState();
@@ -53,7 +57,8 @@ class _HistoryPageState extends State<HistoryPage>
 
   @override
   void dispose() {
-    Get.delete<HistoryBaseController>();
+    // Do not Get.delete HistoryBaseController here — it is permanent and shared
+    // by home-embed, bottom-nav, and /history (YQH-74 D2-history-embed).
     super.dispose();
   }
 
@@ -86,6 +91,79 @@ class _HistoryPageState extends State<HistoryPage>
       () {
         final enableMultiSelect =
             _historyController.baseCtr.enableMultiSelect.value;
+        final body = Padding(
+          padding: .only(left: padding.left, right: padding.right),
+          child: Obx(() {
+            final tabs = _historyController.tabs;
+            if (tabs.isEmpty) {
+              if (!widget.embedded) {
+                return child;
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildEmbeddedToolbar,
+                  ?_buildPauseTip,
+                  Expanded(child: child),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.embedded) _buildEmbeddedToolbar,
+                ?_buildPauseTip,
+                TabBar(
+                  controller: _historyController.tabController,
+                  onTap: (index) {
+                    if (!_historyController.tabController!.indexIsChanging) {
+                      currCtr().scrollController.animToTop();
+                    } else {
+                      if (enableMultiSelect) {
+                        currCtr(
+                          _historyController.tabController!.previousIndex,
+                        ).handleSelect();
+                      }
+                    }
+                  },
+                  tabs: [
+                    const Tab(text: '全部'),
+                    ...tabs.map((item) => Tab(text: item.name)),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    physics: enableMultiSelect
+                        ? const NeverScrollableScrollPhysics()
+                        : tabBarScrollPhysics,
+                    controller: _historyController.tabController,
+                    horizontalDragGestureRecognizer:
+                        CustomHorizontalDragGestureRecognizer.new,
+                    children: [
+                      KeepAliveWrapper(child: child),
+                      ...tabs.map(
+                        (item) => HistoryPage(type: item.type),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }),
+        );
+
+        if (widget.embedded) {
+          return popScope(
+            canPop: !enableMultiSelect,
+            onPopInvokedWithResult: (didPop, result) {
+              if (enableMultiSelect) {
+                currCtr().handleSelect();
+              }
+            },
+            child: body,
+          );
+        }
+
         return popScope(
           canPop: !enableMultiSelect,
           onPopInvokedWithResult: (didPop, result) {
@@ -99,60 +177,68 @@ class _HistoryPageState extends State<HistoryPage>
               ctr: currCtr(),
               child: _buildAppBar,
             ),
-            body: Padding(
-              padding: .only(left: padding.left, right: padding.right),
-              child: Obx(() {
-                final tabs = _historyController.tabs;
-                if (tabs.isEmpty) {
-                  return child;
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ?_buildPauseTip,
-                    TabBar(
-                      controller: _historyController.tabController,
-                      onTap: (index) {
-                        if (!_historyController
-                            .tabController!
-                            .indexIsChanging) {
-                          currCtr().scrollController.animToTop();
-                        } else {
-                          if (enableMultiSelect) {
-                            currCtr(
-                              _historyController.tabController!.previousIndex,
-                            ).handleSelect();
-                          }
-                        }
-                      },
-                      tabs: [
-                        const Tab(text: '全部'),
-                        ...tabs.map((item) => Tab(text: item.name)),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        physics: enableMultiSelect
-                            ? const NeverScrollableScrollPhysics()
-                            : tabBarScrollPhysics,
-                        controller: _historyController.tabController,
-                        horizontalDragGestureRecognizer:
-                            CustomHorizontalDragGestureRecognizer.new,
-                        children: [
-                          KeepAliveWrapper(child: child),
-                          ...tabs.map(
-                            (item) => HistoryPage(type: item.type),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
+            body: body,
           ),
         );
       },
+    );
+  }
+
+  /// Compact actions when nested under Home (no second AppBar).
+  Widget get _buildEmbeddedToolbar {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 4, 0),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              '观看记录',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton(
+            tooltip: '搜索',
+            onPressed: () => Get.toNamed('/historySearch'),
+            icon: const Icon(Icons.search_outlined),
+          ),
+          PopupMenuButton(
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                onTap: () => _historyController.baseCtr.onPauseHistory(context),
+                child: Text(
+                  !_historyController.baseCtr.pauseStatus.value
+                      ? '暂停观看记录'
+                      : '恢复观看记录',
+                ),
+              ),
+              PopupMenuItem(
+                onTap: () => _historyController.baseCtr.onClearHistory(
+                  context,
+                  () {
+                    _historyController.loadingState.value = const Success(null);
+                    if (_historyController.tabController != null) {
+                      for (final item in _historyController.tabs) {
+                        try {
+                          Get.find<HistoryController>(
+                            tag: item.type,
+                          ).loadingState.value = const Success(
+                            null,
+                          );
+                        } catch (_) {}
+                      }
+                    }
+                  },
+                ),
+                child: const Text('清空观看记录'),
+              ),
+              PopupMenuItem(
+                onTap: currCtr().onDelViewedHistory,
+                child: const Text('删除已看记录'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -291,5 +377,5 @@ class _HistoryPageState extends State<HistoryPage>
   }
 
   @override
-  bool get wantKeepAlive => widget.type != null;
+  bool get wantKeepAlive => widget.type != null || widget.embedded;
 }
