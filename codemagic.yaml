@@ -50,17 +50,6 @@ workflows:
             echo "ERROR: need lib/scripts/patch_cm.sh or pwsh+patch.ps1" >&2
             exit 1
           fi
-          if [ -f lib/scripts/patch.ps1 ]; then
-            if command -v pwsh >/dev/null 2>&1; then
-              pwsh -NoProfile -File lib/scripts/patch.ps1 android
-            elif command -v powershell >/dev/null 2>&1; then
-              powershell -NoProfile -File lib/scripts/patch.ps1 android
-            else
-              echo "NOTE: PowerShell not available on this CM instance; skipping lib/scripts/patch.ps1 (GHA applies patches)."
-            fi
-          else
-            echo "No lib/scripts/patch.ps1; continuing."
-          fi
       - name: Flutter analyze
         script: |
           flutter analyze || echo "WARN: flutter analyze exited non-zero; continuing build"
