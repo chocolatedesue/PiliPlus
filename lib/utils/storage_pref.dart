@@ -505,8 +505,10 @@ abstract final class Pref {
   static bool get mainTabBarView =>
       _setting.get(SettingBoxKey.mainTabBarView, defaultValue: false);
 
-  static bool get searchSuggestion =>
-      _setting.get(SettingBoxKey.searchSuggestion, defaultValue: true);
+  static bool get searchSuggestion {
+    if (enableFocusMode) return false;
+    return _setting.get(SettingBoxKey.searchSuggestion, defaultValue: true);
+  }
 
   static bool get showDecorate =>
       _setting.get(SettingBoxKey.showDecorate, defaultValue: true);
@@ -869,8 +871,10 @@ abstract final class Pref {
   static bool get defaultShowComment =>
       _setting.get(SettingBoxKey.defaultShowComment, defaultValue: false);
 
-  static bool get enableTrending =>
-      _setting.get(SettingBoxKey.enableHotKey, defaultValue: true);
+  static bool get enableTrending {
+    if (enableFocusMode) return false;
+    return _setting.get(SettingBoxKey.enableHotKey, defaultValue: true);
+  }
 
   static bool get enableSearchRcmd {
     if (enableFocusMode) return false;

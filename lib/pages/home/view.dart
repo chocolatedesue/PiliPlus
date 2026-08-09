@@ -9,7 +9,6 @@ import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
-import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -101,17 +100,14 @@ class _HomePageState extends CommonPageState<HomePage>
 
   Widget customAppBar() {
     const padding = EdgeInsets.fromLTRB(14, 6, 14, 0);
-    // Focus mode: hide global search entry (AC4). Runtime only.
-    final focusHideSearch = Pref.enableFocusMode;
+    // Focus mode keeps search entry visible (pure search); recommend surfaces
+    // are short-circuited via Pref getters only.
     final child = Row(
       children: [
-        if (focusHideSearch)
-          const Spacer()
-        else
-          searchBar(),
-        if (!focusHideSearch) const SizedBox(width: 4),
-        if (!focusHideSearch) msgBadge(_mainController),
-        if (!focusHideSearch) const SizedBox(width: 8),
+        searchBar(),
+        const SizedBox(width: 4),
+        msgBadge(_mainController),
+        const SizedBox(width: 8),
         userAvatar(colorScheme: _colorScheme, mainController: _mainController),
       ],
     );
