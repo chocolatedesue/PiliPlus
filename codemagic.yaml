@@ -31,7 +31,7 @@ workflows:
     # Free plan only offers mac_mini_m2; it can build Android APKs.
     instance_type: mac_mini_m2
     environment:
-      flutter: stable
+      flutter: 3.44.8
       java: 17
       vars:
         PACKAGE_NAME: "com.example.piliplus"
@@ -140,7 +140,7 @@ workflows:
     name: PiliPlus macOS Build
     max_build_duration: 120
     environment:
-      flutter: stable
+      flutter: 3.44.8
       xcode: latest
       cocoapods: default
     scripts:
@@ -216,7 +216,7 @@ workflows:
     # windows_x2 often requires a paid plan. Prefer GHA win_x64.yml / build.yml.
     instance_type: windows_x2
     environment:
-      flutter: stable
+      flutter: 3.44.8
     scripts:
       - name: Get Flutter packages
         script: |
