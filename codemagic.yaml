@@ -130,7 +130,8 @@ workflows:
       - codemagic-artifacts/PiliPlus-android-*.sha256
     publishing:
       email:
-        recipients: []
+        recipients:
+          - chocolatedesue@outlook.com
         notify:
           success: false
           failure: false
@@ -203,7 +204,8 @@ workflows:
       - codemagic-artifacts/*.zip
     publishing:
       email:
-        recipients: []
+        recipients:
+          - chocolatedesue@outlook.com
         notify:
           success: false
           failure: false
@@ -266,7 +268,8 @@ workflows:
       - codemagic-artifacts/*
     publishing:
       email:
-        recipients: []
+        recipients:
+          - chocolatedesue@outlook.com
         notify:
           success: false
           failure: false
