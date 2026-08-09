@@ -23,7 +23,7 @@ else
 fi
 
 REPO="${REPO:-chocolatedesue/PiliPlus}"
-APP_ID="${CM_APP_ID:-REPLACE_ME_CM_APP_ID}"
+APP_ID="${CM_APP_ID:-6a7803420aef485a30432738}"
 BRANCH="${BRANCH:-main}"
 
 if [[ $# -eq 0 ]]; then

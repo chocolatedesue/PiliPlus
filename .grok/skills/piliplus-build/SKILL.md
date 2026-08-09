@@ -60,8 +60,8 @@ flutter --version   # 建议 3.44.x stable（pubspec / .fvmrc: 3.44.8）
 | Codemagic API | `~/.cmtoken`（`CM_API_TOKEN=...` 或纯 token）或 env `CM_API_TOKEN` |
 | GitHub CLI | `gh auth status`（scopes: repo, workflow） |
 
-Codemagic **App ID** 默认占位：`REPLACE_ME_CM_APP_ID`（**禁止**复制其他项目真实 App ID）  
-仓库默认占位：`REPLACE_ME_OWNER/PiliPlus`（`REPO` 环境变量覆盖）  
+Codemagic **App ID** 默认占位：`6a7803420aef485a30432738`（**禁止**复制其他项目真实 App ID）  
+仓库默认占位：`chocolatedesue/PiliPlus`（`REPO` 环境变量覆盖）  
 `applicationId`：**保持** `com.example.piliplus`
 
 ---
@@ -143,7 +143,7 @@ Windows 正式便携包优先走 GHA `win_x64.yml`（fastforge + Inno），不�
 
 ```bash
 CM_TOKEN=$(grep -oE '[^=]+$' "$HOME/.cmtoken" | head -1 | tr -d ' \n\r')
-APP_ID="${CM_APP_ID:-REPLACE_ME_CM_APP_ID}"
+APP_ID="${CM_APP_ID:-6a7803420aef485a30432738}"
 
 # 触发（勿使用其他项目真实 App ID）
 curl -sS -X POST "https://api.codemagic.io/builds" \
@@ -169,8 +169,8 @@ curl -sS -H "x-auth-token: $CM_TOKEN" \
 一键触发（占位会 skip）：
 
 ```bash
-export REPO=REPLACE_ME_OWNER/PiliPlus
-export CM_APP_ID=REPLACE_ME_CM_APP_ID
+export REPO=chocolatedesue/PiliPlus
+export CM_APP_ID=6a7803420aef485a30432738
 .grok/skills/piliplus-build/scripts/trigger_cloud_builds.sh android macos windows
 ```
 
@@ -179,7 +179,7 @@ export CM_APP_ID=REPLACE_ME_CM_APP_ID
 ## 云构建：GitHub Actions（Windows 主路径）
 
 ```bash
-export REPO="${REPO:-REPLACE_ME_OWNER/PiliPlus}"
+export REPO="${REPO:-chocolatedesue/PiliPlus}"
 
 # 推荐：编排器 Build，只开 Windows
 gh workflow run Build -R "$REPO" --ref main \

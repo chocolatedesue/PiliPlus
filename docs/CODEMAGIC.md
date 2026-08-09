@@ -72,13 +72,13 @@ GHA Android 使用 `lib/scripts/patch.ps1`。Codemagic mac 实例上若无 `pwsh
 1. [codemagic.io](https://codemagic.io) 用 GitHub 登录。
 2. **Add application** → 选择你的 PiliPlus fork/mirror（不要假设固定 App ID）。
 3. 选择 Flutter App，扫描根目录 `codemagic.yaml`。
-4. 将真实 **App ID** 仅保存在本地环境 / `CM_APP_ID`（脚本默认为 `REPLACE_ME_CM_APP_ID`）。
+4. 将真实 **App ID** 仅保存在本地环境 / `CM_APP_ID`（脚本默认为 `6a7803420aef485a30432738`）。
 5. 手动 Start：优先 `android-apk` / `macos-build`。
 
 触发示例（占位）：
 
 ```bash
-export CM_APP_ID=REPLACE_ME_CM_APP_ID   # 换成你的 App ID
+export CM_APP_ID=6a7803420aef485a30432738   # 换成你的 App ID
 # CM_API_TOKEN 或 ~/.cmtoken — 勿提交
 .grok/skills/piliplus-build/scripts/trigger_cloud_builds.sh android macos
 ```

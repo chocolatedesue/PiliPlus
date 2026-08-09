@@ -37,8 +37,8 @@ From `win_x64.yml`:
 flutter build apk --release --split-per-abi
 
 # Codemagic trigger (placeholders)
-export CM_APP_ID=REPLACE_ME_CM_APP_ID
-export REPO=REPLACE_ME_OWNER/PiliPlus
+export CM_APP_ID=6a7803420aef485a30432738
+export REPO=chocolatedesue/PiliPlus
 # token via CM_API_TOKEN or ~/.cmtoken — never commit
 curl -sS -X POST https://api.codemagic.io/builds \
   -H "Content-Type: application/json" \
@@ -56,8 +56,8 @@ REPO=owner/PiliPlus ./scripts/publish_github_release.sh v2.1.0 ./dist
 
 ## IDs (placeholders this wave)
 
-- GitHub repo default in scripts: `REPLACE_ME_OWNER/PiliPlus`
-- Codemagic appId default: `REPLACE_ME_CM_APP_ID`
+- GitHub repo default in scripts: `chocolatedesue/PiliPlus`
+- Codemagic appId default: `6a7803420aef485a30432738`
 - applicationId: `com.example.piliplus` (unchanged)
 - pubspec name: `PiliPlus`
 - Flutter: 3.44.8 (pubspec / .fvmrc); CM `stable` ≈ 3.44.x
