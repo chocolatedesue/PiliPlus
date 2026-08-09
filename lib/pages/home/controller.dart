@@ -7,6 +7,7 @@ import 'package:PiliPlus/models/common/home_tab_type.dart';
 import 'package:PiliPlus/pages/common/common_controller.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
 import 'package:PiliPlus/services/account_service.dart';
+import 'package:PiliPlus/utils/focus_mode.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -19,6 +20,9 @@ class HomeController extends GetxController
     with GetSingleTickerProviderStateMixin, ScrollOrRefreshMixin {
   late List<HomeTabType> tabs;
   late TabController tabController;
+
+  /// Bumps when Focus mode rebuilds home tabs (hide multi-tab bar).
+  final RxInt layoutEpoch = 0.obs;
 
   RxBool? showTopBar;
   late final bool hideTopBar;
@@ -65,18 +69,30 @@ class HomeController extends GetxController
   }
 
   void setTabConfig() {
-    final tabs = GStorage.setting.get(SettingBoxKey.tabBarSort) as List?;
-    if (tabs != null) {
-      this.tabs = tabs.map((i) => HomeTabType.values[i]).toList();
+    if (Pref.enableFocusMode) {
+      tabs = FocusMode.homeTabs;
     } else {
-      this.tabs = HomeTabType.values;
+      final tabs = GStorage.setting.get(SettingBoxKey.tabBarSort) as List?;
+      if (tabs != null) {
+        this.tabs = tabs.map((i) => HomeTabType.values[i]).toList();
+      } else {
+        this.tabs = HomeTabType.values;
+      }
     }
 
     tabController = TabController(
-      initialIndex: max(0, this.tabs.indexOf(HomeTabType.rcmd)),
-      length: this.tabs.length,
+      initialIndex: max(0, tabs.indexOf(HomeTabType.rcmd)),
+      length: tabs.length,
       vsync: this,
     );
+  }
+
+  void reconfigureTabs() {
+    try {
+      tabController.dispose();
+    } catch (_) {}
+    setTabConfig();
+    layoutEpoch.value++;
   }
 
   @override

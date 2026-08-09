@@ -33,6 +33,7 @@ import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/focus_mode.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -45,6 +46,14 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:path/path.dart' as path;
 
 List<SettingsModel> get styleSettings => [
+  SwitchModel(
+    title: '专注模式',
+    subtitle: '精简底栏为推荐/历史/我的，隐藏首页多 Tab 与相关推荐，默认开启后台播放',
+    leading: const Icon(Icons.center_focus_strong_outlined),
+    setKey: SettingBoxKey.enableFocusMode,
+    defaultVal: false,
+    onChanged: (value) => FocusMode.applyLive(),
+  ),
   if (PlatformUtils.isDesktop) ...[
     const SwitchModel(
       title: '显示窗口标题栏',

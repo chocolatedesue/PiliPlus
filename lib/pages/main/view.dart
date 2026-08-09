@@ -293,7 +293,7 @@ class _MainAppState extends PopScopeState<MainApp>
             destinations: _mainController.navigationBars
                 .map(
                   (e) => FloatingNavigationDestination(
-                    label: e.label,
+                    label: e.displayLabel,
                     icon: _buildIcon(type: e),
                     selectedIcon: _buildIcon(type: e, selected: true),
                   ),
@@ -310,7 +310,7 @@ class _MainAppState extends PopScopeState<MainApp>
             destinations: _mainController.navigationBars
                 .map(
                   (e) => NavigationDestination(
-                    label: e.label,
+                    label: e.displayLabel,
                     icon: _buildIcon(type: e),
                     selectedIcon: _buildIcon(type: e, selected: true),
                   ),
@@ -330,7 +330,7 @@ class _MainAppState extends PopScopeState<MainApp>
             items: _mainController.navigationBars
                 .map(
                   (e) => BottomNavigationBarItem(
-                    label: e.label,
+                    label: e.displayLabel,
                     icon: _buildIcon(type: e),
                     activeIcon: _buildIcon(type: e, selected: true),
                   ),
@@ -393,7 +393,7 @@ class _MainAppState extends PopScopeState<MainApp>
                   children: _mainController.navigationBars
                       .map(
                         (e) => NavigationDrawerDestination(
-                          label: Text(e.label),
+                          label: Text(e.displayLabel),
                           icon: _buildIcon(type: e),
                           selectedIcon: _buildIcon(
                             type: e,
@@ -419,7 +419,7 @@ class _MainAppState extends PopScopeState<MainApp>
           destinations: _mainController.navigationBars
               .map(
                 (e) => NavigationRailDestination(
-                  label: Text(e.label),
+                  label: Text(e.displayLabel),
                   icon: _buildIcon(type: e),
                   selectedIcon: _buildIcon(type: e, selected: true),
                 ),
@@ -437,76 +437,83 @@ class _MainAppState extends PopScopeState<MainApp>
 
   @override
   Widget build(BuildContext context) {
-    Widget child;
-    if (_mainController.mainTabBarView) {
-      child = TabBarView(
-        controller: _mainController.controller,
-        physics: const NeverScrollableScrollPhysics(),
-        scrollDirection: _mainController.useBottomNav ? .horizontal : .vertical,
-        children: _mainController.navigationBars.map((i) => i.page).toList(),
-      );
-    } else {
-      child = PageView(
-        controller: _mainController.controller,
-        physics: const NeverScrollableScrollPhysics(),
-        children: _mainController.navigationBars.map((i) => i.page).toList(),
-      );
-    }
-
-    Widget? sideBar;
-    Widget? bottomNav;
-    final EdgeInsets padding;
-    if (_mainController.useBottomNav) {
-      bottomNav = _bottomNav;
-      if (bottomNav != null) {
-        bottomNav = MediaQuery.removePadding(
-          context: context,
-          removeTop: true,
-          child: bottomNav,
+    return Obx(() {
+      _mainController.layoutEpoch.value;
+      Widget child;
+      if (_mainController.mainTabBarView) {
+        child = TabBarView(
+          key: ValueKey(_mainController.layoutEpoch.value),
+          controller: _mainController.controller,
+          physics: const NeverScrollableScrollPhysics(),
+          scrollDirection:
+              _mainController.useBottomNav ? .horizontal : .vertical,
+          children: _mainController.navigationBars.map((i) => i.page).toList(),
+        );
+      } else {
+        child = PageView(
+          key: ValueKey(_mainController.layoutEpoch.value),
+          controller: _mainController.controller,
+          physics: const NeverScrollableScrollPhysics(),
+          children: _mainController.navigationBars.map((i) => i.page).toList(),
         );
       }
-      padding = .only(
-        top: _padding.top,
-        left: _padding.left,
-        right: _padding.right,
-      );
-    } else {
-      sideBar = DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(
-              color: _colorScheme.outline.withValues(alpha: 0.06),
+
+      Widget? sideBar;
+      Widget? bottomNav;
+      final EdgeInsets padding;
+      if (_mainController.useBottomNav) {
+        bottomNav = _bottomNav;
+        if (bottomNav != null) {
+          bottomNav = MediaQuery.removePadding(
+            context: context,
+            removeTop: true,
+            child: bottomNav,
+          );
+        }
+        padding = .only(
+          top: _padding.top,
+          left: _padding.left,
+          right: _padding.right,
+        );
+      } else {
+        sideBar = DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              right: BorderSide(
+                color: _colorScheme.outline.withValues(alpha: 0.06),
+              ),
             ),
           ),
+          child: _sideBar(),
+        );
+        padding = .only(top: _padding.top, right: _padding.right);
+      }
+
+      child = Material(
+        child: MainLayout(
+          sideBar: sideBar,
+          bottomNav: bottomNav,
+          body: Padding(padding: padding, child: child),
         ),
-        child: _sideBar(),
       );
-      padding = .only(top: _padding.top, right: _padding.right);
-    }
 
-    child = Material(
-      child: MainLayout(
-        sideBar: sideBar,
-        bottomNav: bottomNav,
-        body: Padding(padding: padding, child: child),
-      ),
-    );
+      if (PlatformUtils.isMobile) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarBrightness: _colorScheme.brightness,
+            statusBarIconBrightness: _colorScheme.brightness.reverse,
+            systemStatusBarContrastEnforced: false,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness:
+                _colorScheme.brightness.reverse,
+          ),
+          child: child,
+        );
+      }
 
-    if (PlatformUtils.isMobile) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarBrightness: _colorScheme.brightness,
-          statusBarIconBrightness: _colorScheme.brightness.reverse,
-          systemStatusBarContrastEnforced: false,
-          systemNavigationBarColor: Colors.transparent,
-          systemNavigationBarIconBrightness: _colorScheme.brightness.reverse,
-        ),
-        child: child,
-      );
-    }
-
-    return child;
+      return child;
+    });
   }
 
   Widget _buildIcon({required NavigationBarType type, bool selected = false}) {

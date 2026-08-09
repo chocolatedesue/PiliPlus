@@ -83,6 +83,17 @@ android {
         }
     }
 
+    // Defense-in-depth ABI splits (align with flutter build apk --split-per-abi).
+    // Do not emit a universal/fat APK for release packaging.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     applicationVariants.all {
         val variant = this
         variant.outputs.forEach { output ->

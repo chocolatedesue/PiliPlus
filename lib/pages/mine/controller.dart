@@ -6,8 +6,10 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/models/common/theme/theme_type.dart';
 import 'package:PiliPlus/models/user/info.dart';
 import 'package:PiliPlus/models/user/stat.dart';
+import 'package:PiliPlus/models/common/nav_bar_config.dart';
 import 'package:PiliPlus/models_new/fav/fav_folder/data.dart';
 import 'package:PiliPlus/pages/common/common_data_controller.dart';
+import 'package:PiliPlus/pages/main/controller.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
@@ -51,9 +53,16 @@ class MineController extends CommonDataController<FavFolderData, FavFolderData>
       icon: CustomIcons.history,
       title: '观看记录',
       onTap: () {
-        if (isLogin) {
-          Get.toNamed('/history');
-        }
+        if (!isLogin) return;
+        try {
+          final main = Get.find<MainController>();
+          final idx = main.navigationBars.indexOf(NavigationBarType.history);
+          if (idx >= 0) {
+            main.setIndex(idx);
+            return;
+          }
+        } catch (_) {}
+        Get.toNamed('/history');
       },
     ),
     (

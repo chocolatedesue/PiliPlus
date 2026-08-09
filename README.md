@@ -219,6 +219,7 @@
 
 ## 声明
 
+此项目为**非官方**第三方客户端；许可证见仓库根目录 `LICENSE`（GPL）。
 此项目（PiliPlus）是个人为了兴趣而开发，仅用于学习和测试，请于下载后24小时内删除。
 所用API皆从官方网站收集，不提供任何破解内容。
 在此致敬原作者：[guozhigq/pilipala](https://github.com/guozhigq/pilipala)

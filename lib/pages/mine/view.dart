@@ -18,6 +18,7 @@ import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
+import 'package:PiliPlus/utils/focus_mode.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/utils.dart';
@@ -173,6 +174,23 @@ class _MediaPageState extends CommonPageState<MinePage>
             onPressed: () => Get.toNamed('/myReply'),
             icon: const Icon(Icons.message_outlined),
           ),
+        Obx(
+          () {
+            final focus = FocusMode.enabled.value;
+            return IconButton(
+              iconSize: iconSize,
+              padding: padding,
+              style: style,
+              tooltip: focus ? '关闭专注模式' : '开启专注模式',
+              onPressed: FocusMode.toggle,
+              icon: Icon(
+                focus
+                    ? Icons.center_focus_strong
+                    : Icons.center_focus_strong_outlined,
+              ),
+            );
+          },
+        ),
         Obx(
           () {
             final anonymity = MineController.anonymity.value;

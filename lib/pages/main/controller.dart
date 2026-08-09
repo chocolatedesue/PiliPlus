@@ -11,9 +11,11 @@ import 'package:PiliPlus/pages/dynamics/controller.dart';
 import 'package:PiliPlus/pages/home/controller.dart';
 import 'package:PiliPlus/pages/mine/view.dart';
 import 'package:PiliPlus/services/account_service.dart';
+import 'package:PiliPlus/pages/history/controller.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
+import 'package:PiliPlus/utils/focus_mode.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -30,9 +32,12 @@ class MainController extends GetxController
 
   List<NavigationBarType> navigationBars = <NavigationBarType>[];
 
+  /// Bumps when Focus mode (or other shell layout) rebuilds destinations.
+  final RxInt layoutEpoch = 0.obs;
+
   RxDouble? barOffset;
   RxBool? showBottomBar;
-  late final bool hideBottomBar;
+  late bool hideBottomBar;
   late final barHideType = Pref.barHideType;
   bool useBottomNav = false;
   late dynamic controller;
@@ -77,14 +82,7 @@ class MainController extends GetxController
     }
 
     setNavBarConfig();
-
-    controller = mainTabBarView
-        ? TabController(
-            vsync: this,
-            initialIndex: selectedIndex.value,
-            length: navigationBars.length,
-          )
-        : PageController(initialPage: selectedIndex.value);
+    _initPageController();
 
     hideBottomBar =
         !useSideBar && navigationBars.length > 1 && Pref.hideBottomBar;
@@ -221,19 +219,74 @@ class MainController extends GetxController
   }
 
   void setNavBarConfig() {
-    List<int>? navBarSort =
-        (GStorage.setting.get(SettingBoxKey.navBarSort) as List?)?.fromCast();
     late final List<NavigationBarType> navigationBars;
-    if (navBarSort == null || navBarSort.isEmpty) {
-      navigationBars = NavigationBarType.values;
+    if (Pref.enableFocusMode) {
+      navigationBars = FocusMode.navBars;
     } else {
-      navigationBars = navBarSort
-          .map((i) => NavigationBarType.values[i])
-          .toList();
+      final List<int>? navBarSort =
+          (GStorage.setting.get(SettingBoxKey.navBarSort) as List?)
+              ?.fromCast();
+      if (navBarSort == null || navBarSort.isEmpty) {
+        navigationBars = NavigationBarType.defaults;
+      } else {
+        navigationBars = navBarSort
+            .map((i) => NavigationBarType.values[i])
+            .toList();
+      }
     }
     this.navigationBars = navigationBars;
     final defPage = Pref.defaultHomePage;
-    selectedIndex.value = navigationBars.indexOf(defPage);
+    final idx = navigationBars.indexOf(defPage);
+    selectedIndex.value = idx >= 0 ? idx : 0;
+  }
+
+  void _initPageController() {
+    controller = mainTabBarView
+        ? TabController(
+            vsync: this,
+            initialIndex: selectedIndex.value,
+            length: navigationBars.length,
+          )
+        : PageController(initialPage: selectedIndex.value);
+  }
+
+  /// Rebuild bottom/side destinations after Focus mode toggles.
+  void reconfigureLayout() {
+    final prevType = navigationBars.elementAtOrNull(selectedIndex.value);
+    try {
+      controller.dispose();
+    } catch (_) {}
+
+    setNavBarConfig();
+    if (prevType != null) {
+      final idx = navigationBars.indexOf(prevType);
+      if (idx >= 0) {
+        selectedIndex.value = idx;
+      }
+    }
+
+    _initPageController();
+
+    hasDyn = navigationBars.contains(NavigationBarType.dynamics);
+    hasHome = navigationBars.contains(NavigationBarType.home);
+    hideBottomBar =
+        !useSideBar && navigationBars.length > 1 && Pref.hideBottomBar;
+    if (hideBottomBar) {
+      switch (barHideType) {
+        case .instant:
+          showBottomBar ??= RxBool(true);
+          showBottomBar!.value = true;
+        case .sync:
+          barOffset ??= RxDouble(0.0);
+          barOffset!.value = 0.0;
+      }
+    } else {
+      showBottomBar = null;
+      // keep barOffset if already created — harmless when unused
+    }
+
+    _mineIndex = null;
+    layoutEpoch.value++;
   }
 
   void checkDefaultSearch([bool shouldCheck = false]) {
@@ -312,6 +365,8 @@ class MainController extends GetxController
               homeController.onRefresh();
             } else if (currentNav == NavigationBarType.dynamics) {
               dynamicController.onRefresh();
+            } else if (currentNav == NavigationBarType.history) {
+              _historyRefresh();
             }
           },
         );
@@ -320,10 +375,30 @@ class MainController extends GetxController
           homeController.toTopOrRefresh();
         } else if (currentNav == NavigationBarType.dynamics) {
           dynamicController.toTopOrRefresh();
+        } else if (currentNav == NavigationBarType.history) {
+          _historyToTopOrRefresh();
         }
       }
       _lastSelectTime = now;
     }
+  }
+
+  HistoryController? get _historyController {
+    try {
+      return Get.find<HistoryController>(tag: 'all');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _historyRefresh() {
+    _historyController?.onRefresh();
+  }
+
+  void _historyToTopOrRefresh() {
+    final ctr = _historyController;
+    if (ctr == null) return;
+    ctr.toTopOrRefresh();
   }
 
   void setSearchBar() {

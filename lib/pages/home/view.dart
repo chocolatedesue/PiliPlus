@@ -41,56 +41,61 @@ class _HomePageState extends CommonPageState<HomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    Widget tabBar;
-    if (_homeController.tabs.length > 1) {
-      tabBar = Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: SizedBox(
-          height: 42,
-          width: double.infinity,
-          child: TabBar(
-            controller: _homeController.tabController,
-            tabs: _homeController.tabs.map((e) => Tab(text: e.label)).toList(),
-            isScrollable: true,
-            dividerColor: Colors.transparent,
-            dividerHeight: 0,
-            splashBorderRadius: Style.mdRadius,
-            tabAlignment: TabAlignment.center,
-            onTap: (_) {
-              feedBack();
-              if (!_homeController.tabController.indexIsChanging) {
-                _homeController.animateToTop();
-              }
-            },
-          ),
-        ),
-      );
-      if (_homeController.hideTopBar &&
-          _mainController.barHideType == .instant) {
-        tabBar = Material(
-          color: _colorScheme.surface,
-          child: tabBar,
-        );
-      }
-    } else {
-      tabBar = const SizedBox(height: 6);
-    }
-    return Column(
-      children: [
-        if (!_mainController.useSideBar &&
-            MediaQuery.sizeOf(context).isPortrait)
-          customAppBar(),
-        tabBar,
-        Expanded(
-          child: onBuild(
-            tabBarView(
+    return Obx(() {
+      _homeController.layoutEpoch.value;
+      Widget tabBar;
+      if (_homeController.tabs.length > 1) {
+        tabBar = Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: SizedBox(
+            height: 42,
+            width: double.infinity,
+            child: TabBar(
               controller: _homeController.tabController,
-              children: _homeController.tabs.map((e) => e.page).toList(),
+              tabs: _homeController.tabs
+                  .map((e) => Tab(text: e.label))
+                  .toList(),
+              isScrollable: true,
+              dividerColor: Colors.transparent,
+              dividerHeight: 0,
+              splashBorderRadius: Style.mdRadius,
+              tabAlignment: TabAlignment.center,
+              onTap: (_) {
+                feedBack();
+                if (!_homeController.tabController.indexIsChanging) {
+                  _homeController.animateToTop();
+                }
+              },
             ),
           ),
-        ),
-      ],
-    );
+        );
+        if (_homeController.hideTopBar &&
+            _mainController.barHideType == .instant) {
+          tabBar = Material(
+            color: _colorScheme.surface,
+            child: tabBar,
+          );
+        }
+      } else {
+        tabBar = const SizedBox(height: 6);
+      }
+      return Column(
+        children: [
+          if (!_mainController.useSideBar &&
+              MediaQuery.sizeOf(context).isPortrait)
+            customAppBar(),
+          tabBar,
+          Expanded(
+            child: onBuild(
+              tabBarView(
+                controller: _homeController.tabController,
+                children: _homeController.tabs.map((e) => e.page).toList(),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
   }
 
   Widget customAppBar() {

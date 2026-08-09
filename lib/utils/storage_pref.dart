@@ -389,8 +389,13 @@ abstract final class Pref {
   static bool get showViewPoints =>
       _setting.get(SettingBoxKey.showViewPoints, defaultValue: true);
 
-  static bool get showRelatedVideo =>
-      _setting.get(SettingBoxKey.showRelatedVideo, defaultValue: true);
+  static bool get enableFocusMode =>
+      _setting.get(SettingBoxKey.enableFocusMode, defaultValue: false);
+
+  static bool get showRelatedVideo {
+    if (enableFocusMode) return false;
+    return _setting.get(SettingBoxKey.showRelatedVideo, defaultValue: true);
+  }
 
   static bool get showVideoReply =>
       _setting.get(SettingBoxKey.showVideoReply, defaultValue: true);
@@ -653,8 +658,10 @@ abstract final class Pref {
     defaultValue: true,
   );
 
-  static bool get enableBackgroundPlay =>
-      _setting.get(SettingBoxKey.enableBackgroundPlay, defaultValue: true);
+  static bool get enableBackgroundPlay {
+    if (enableFocusMode) return true;
+    return _setting.get(SettingBoxKey.enableBackgroundPlay, defaultValue: true);
+  }
 
   static bool get disableLikeMsg =>
       _setting.get(SettingBoxKey.disableLikeMsg, defaultValue: false);
@@ -883,8 +890,13 @@ abstract final class Pref {
   static int get cacheVideoFit =>
       _video.get(VideoBoxKey.cacheVideoFit, defaultValue: 1);
 
-  static bool get continuePlayInBackground =>
-      _setting.get(SettingBoxKey.continuePlayInBackground, defaultValue: false);
+  static bool get continuePlayInBackground {
+    if (enableFocusMode) return true;
+    return _setting.get(
+      SettingBoxKey.continuePlayInBackground,
+      defaultValue: false,
+    );
+  }
 
   static bool get directExitOnBack =>
       _setting.get(SettingBoxKey.directExitOnBack, defaultValue: false);

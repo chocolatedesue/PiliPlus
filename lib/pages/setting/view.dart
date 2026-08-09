@@ -64,7 +64,7 @@ class _SettingPageState extends State<SettingPage> {
     ),
     _SettingsModel(
       type: SettingType.styleSetting,
-      subtitle: '横屏适配（平板）、侧栏、列宽、首页、动态红点、主题、字号、图片、帧率等',
+      subtitle: '专注模式、横屏适配（平板）、侧栏、列宽、首页、动态红点、主题、字号、图片、帧率等',
       icon: Icon(Icons.style_outlined),
     ),
     _SettingsModel(

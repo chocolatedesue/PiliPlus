@@ -1,0 +1,272 @@
+# PiliPlus Codemagic cloud builds
+#
+# Workflows:
+#   - android-apk   (mac_mini_m2, free-plan friendly) → per-ABI release APKs
+#                     (armeabi-v7a, arm64-v8a, x86_64; no fat app-release.apk)
+#   - macos-build   (mac_mini_m2, free-plan friendly) → unsigned .app zip
+#   - windows-build (windows_x2, often paid / may be unavailable on free) → Release zip
+#
+# Primary Windows path for this repo is existing GitHub Actions, not this CM
+# workflow:
+#   - `.github/workflows/build.yml` dispatch with `build_win_x64`
+#   - callable / direct `.github/workflows/win_x64.yml`
+#     → `PiliPlus_windows_*_x64_portable.zip` (+ setup exe via fastforge)
+# Codemagic `windows-build` is an optional paid fallback only.
+#
+# Flutter pin: align with pubspec / .fvmrc (3.44.8); CM channel stable tracks
+# nearby 3.44.x (e.g. 3.44.9).
+#
+# Optional PowerShell patches: GHA uses `lib/scripts/patch.ps1`. On Codemagic
+# mac instances, `pwsh` may be absent — scripts below try pwsh/powershell and
+# fall back to plain `flutter build` with a clear log line (no hard fail).
+#
+# applicationId / namespace remain com.example.piliplus this wave.
+# Secrets: never commit key.properties / jks / .cmtoken; CM may write
+# key.properties at build time from env var *names* only.
+
+workflows:
+  android-apk:
+    name: PiliPlus Android APK
+    max_build_duration: 60
+    # Free plan only offers mac_mini_m2; it can build Android APKs.
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      java: 17
+      vars:
+        PACKAGE_NAME: "com.example.piliplus"
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Optional PowerShell patch (android)
+        script: |
+          set -euo pipefail
+          if [ -f lib/scripts/patch.ps1 ]; then
+            if command -v pwsh >/dev/null 2>&1; then
+              pwsh -NoProfile -File lib/scripts/patch.ps1 android
+            elif command -v powershell >/dev/null 2>&1; then
+              powershell -NoProfile -File lib/scripts/patch.ps1 android
+            else
+              echo "NOTE: PowerShell not available on this CM instance; skipping lib/scripts/patch.ps1 (GHA applies patches)."
+            fi
+          else
+            echo "No lib/scripts/patch.ps1; continuing."
+          fi
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+      - name: Unit and widget tests
+        script: |
+          # PiliPlus may ship with few/no tests; do not fail the whole build if none.
+          if ls test/**/*_test.dart test/*_test.dart 2>/dev/null | grep -q .; then
+            flutter test
+          else
+            echo "No dart test files under test/; skipping flutter test."
+            flutter test || true
+          fi
+      - name: Configure Android signing (optional)
+        script: |
+          set -euo pipefail
+          # Codemagic code signing group vars (CM_KEYSTORE*) or plain base64 secrets.
+          # Never commit key.properties or keystore files.
+          if [ -n "${CM_KEYSTORE:-}" ] || [ -n "${KEYSTORE_BASE64:-}" ]; then
+            echo "Release keystore detected; writing android/key.properties"
+            if [ -n "${CM_KEYSTORE:-}" ]; then
+              echo "$CM_KEYSTORE" | base64 --decode > "$CM_BUILD_DIR/keystore.jks"
+              STORE_PASSWORD="${CM_KEYSTORE_PASSWORD}"
+              KEY_PASSWORD="${CM_KEY_PASSWORD}"
+              KEY_ALIAS="${CM_KEY_ALIAS}"
+            else
+              echo "$KEYSTORE_BASE64" | base64 --decode > "$CM_BUILD_DIR/keystore.jks"
+              STORE_PASSWORD="${KEYSTORE_PASSWORD}"
+              KEY_PASSWORD="${KEY_PASSWORD}"
+              KEY_ALIAS="${KEY_ALIAS}"
+            fi
+            {
+              echo "storePassword=${STORE_PASSWORD}"
+              echo "keyPassword=${KEY_PASSWORD}"
+              echo "keyAlias=${KEY_ALIAS}"
+              echo "storeFile=${CM_BUILD_DIR}/keystore.jks"
+            } > android/key.properties
+          else
+            echo "No keystore secrets; release APK will use debug signing."
+          fi
+      - name: Build Android release APKs (split-per-abi)
+        script: |
+          set -euo pipefail
+          # pubspec version is 2.1.0+1; CM bumps patch with build number when unset.
+          BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
+          flutter build apk --release --split-per-abi \
+            --build-name="$BUILD_NAME" \
+            --build-number="$PROJECT_BUILD_NUMBER"
+      - name: Package per-ABI APK artifacts
+        script: |
+          set -euo pipefail
+          mkdir -p codemagic-artifacts
+          OUT="build/app/outputs/flutter-apk"
+          # Publish only split APKs — do not promote fat app-release.apk.
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            SRC="${OUT}/app-${abi}-release.apk"
+            if [ ! -f "$SRC" ]; then
+              echo "Missing split APK: $SRC"
+              ls -la "${OUT}" || true
+              exit 1
+            fi
+            # CM intermediate naming (maps to GHA PiliPlus_android_\${ver}_\${abi}.apk at release time)
+            DEST="codemagic-artifacts/PiliPlus-android-${abi}-b${PROJECT_BUILD_NUMBER}.apk"
+            LATEST="codemagic-artifacts/PiliPlus-android-${abi}-latest.apk"
+            cp "$SRC" "$DEST"
+            cp "$SRC" "$LATEST"
+            sha256sum "$DEST" | tee "codemagic-artifacts/PiliPlus-android-${abi}-b${PROJECT_BUILD_NUMBER}.sha256"
+            sha256sum "$LATEST" | tee "codemagic-artifacts/PiliPlus-android-${abi}-latest.sha256"
+          done
+          # Explicitly do not copy app-release.apk even if present.
+          ls -la codemagic-artifacts/
+          ls -la "${OUT}" || true
+    artifacts:
+      # Globs intentionally match only split names — not app-release.apk / fat.
+      - codemagic-artifacts/PiliPlus-android-*.apk
+      - codemagic-artifacts/PiliPlus-android-*.sha256
+    publishing:
+      email:
+        recipients: []
+        notify:
+          success: false
+          failure: false
+
+  macos-build:
+    name: PiliPlus macOS Build
+    max_build_duration: 120
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Enable macOS desktop support
+        script: |
+          flutter config --enable-macos-desktop
+      - name: Optional PowerShell patch (macos)
+        script: |
+          set -euo pipefail
+          if [ -f lib/scripts/patch.ps1 ]; then
+            if command -v pwsh >/dev/null 2>&1; then
+              pwsh -NoProfile -File lib/scripts/patch.ps1 macos || \
+                pwsh -NoProfile -File lib/scripts/patch.ps1 mac || true
+            else
+              echo "NOTE: PowerShell not available; skipping patch.ps1 for macOS."
+            fi
+          fi
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+      - name: Build Flutter macOS (release, unsigned)
+        script: |
+          BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
+          flutter build macos --release \
+            --build-name="$BUILD_NAME" \
+            --build-number="${PROJECT_BUILD_NUMBER}"
+      - name: Create artifact archive
+        script: |
+          set -euo pipefail
+          mkdir -p codemagic-artifacts
+          # PRODUCT_NAME in macos/Runner/Configs/AppInfo.xcconfig is PiliPlus
+          APP_PATH="build/macos/Build/Products/Release/PiliPlus.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH="$(find build/macos -name 'PiliPlus.app' -maxdepth 8 | head -1 || true)"
+          fi
+          if [ -z "${APP_PATH}" ] || [ ! -d "${APP_PATH}" ]; then
+            APP_PATH="$(find build/macos -name '*.app' -maxdepth 8 | head -1 || true)"
+          fi
+          if [ -z "${APP_PATH}" ] || [ ! -d "${APP_PATH}" ]; then
+            echo "macOS .app not found under build/macos"
+            find build/macos -maxdepth 8 -type d -name '*.app' || true
+            exit 1
+          fi
+          echo "Packaging app at: ${APP_PATH}"
+          APP_DIR="$(dirname "${APP_PATH}")"
+          APP_BASE="$(basename "${APP_PATH}")"
+          ZIP_NAME="PiliPlus-macos-b${PROJECT_BUILD_NUMBER}.zip"
+          (
+            cd "${APP_DIR}"
+            ditto -c -k --keepParent "${APP_BASE}" "${ZIP_NAME}"
+            cp "${ZIP_NAME}" "PiliPlus-macos-latest.zip"
+          )
+          cp "${APP_DIR}/${ZIP_NAME}" "codemagic-artifacts/"
+          cp "${APP_DIR}/PiliPlus-macos-latest.zip" "codemagic-artifacts/"
+    artifacts:
+      - build/macos/Build/Products/Release/*.app
+      - build/macos/**/*.zip
+      - codemagic-artifacts/*.zip
+    publishing:
+      email:
+        recipients: []
+        notify:
+          success: false
+          failure: false
+
+  windows-build:
+    name: PiliPlus Windows Build (CM paid fallback)
+    max_build_duration: 120
+    # windows_x2 often requires a paid plan. Prefer GHA win_x64.yml / build.yml.
+    instance_type: windows_x2
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Enable Windows desktop support
+        script: |
+          flutter config --enable-windows-desktop
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+      - name: Build Flutter Windows (release)
+        script: |
+          BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
+          flutter build windows --release \
+            --build-name="$BUILD_NAME" \
+            --build-number="${PROJECT_BUILD_NUMBER}"
+      - name: Package Windows release folder
+        script: |
+          set -euo pipefail
+          mkdir -p codemagic-artifacts
+          REL_DIR="build/windows/x64/runner/Release"
+          if [ ! -d "${REL_DIR}" ]; then
+            REL_DIR="$(find build/windows -type d -name Release | head -1 || true)"
+          fi
+          if [ -z "${REL_DIR}" ] || [ ! -d "${REL_DIR}" ]; then
+            echo "Windows Release directory not found"
+            find build/windows -maxdepth 8 -type d || true
+            exit 1
+          fi
+          echo "Packaging: ${REL_DIR}"
+          # Align with GHA portable naming where version is known; CM uses build number.
+          ZIP_NAME="PiliPlus_windows_b${PROJECT_BUILD_NUMBER}_x64_portable.zip"
+          if command -v powershell.exe >/dev/null 2>&1; then
+            powershell.exe -NoProfile -Command \
+              "Compress-Archive -Path '${REL_DIR}\\*' -DestinationPath '${ZIP_NAME}' -Force"
+          elif command -v zip >/dev/null 2>&1; then
+            (cd "${REL_DIR}" && zip -r "${CM_BUILD_DIR}/${ZIP_NAME}" .)
+          else
+            ZIP_NAME="PiliPlus_windows_b${PROJECT_BUILD_NUMBER}_x64_portable.tar.gz"
+            tar -czf "${ZIP_NAME}" -C "${REL_DIR}" .
+          fi
+          cp -f PiliPlus_windows_b${PROJECT_BUILD_NUMBER}_x64_portable.* codemagic-artifacts/ 2>/dev/null || true
+          ls -la codemagic-artifacts/ || true
+          ls -la "${REL_DIR}" | head -30
+    artifacts:
+      - build/windows/**/runner/Release/**
+      - PiliPlus_windows_*_x64_portable.zip
+      - PiliPlus_windows_*_x64_portable.tar.gz
+      - codemagic-artifacts/*
+    publishing:
+      email:
+        recipients: []
+        notify:
+          success: false
+          failure: false
