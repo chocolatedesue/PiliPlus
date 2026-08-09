@@ -92,7 +92,17 @@ workflows:
       - name: Build Android release APKs (split-per-abi)
         script: |
           set -euo pipefail
-          # pubspec version is 2.1.0+1; CM bumps patch with build number when unset.
+          # Codemagic sdkmanager may install platform as android-37.0 while Gradle
+          # looks up android-37 — install + symlink before assembleRelease.
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/share/android-sdk}}"
+          if command -v sdkmanager >/dev/null 2>&1; then
+            yes | sdkmanager --sdk_root="$SDK_ROOT" "platforms;android-37" "build-tools;35.0.0" || true
+          fi
+          if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
+            ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
+            echo "symlinked $SDK_ROOT/platforms/android-37 -> android-37.0"
+          fi
+          ls -la "$SDK_ROOT/platforms" || true
           BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
           flutter build apk --release --split-per-abi \
             --build-name="$BUILD_NAME" \
