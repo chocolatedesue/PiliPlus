@@ -24,6 +24,8 @@ abstract final class GStorage {
   static late final Box<dynamic> video;
   static late final Box<int> watchProgress;
   static late final Box<Uint8List>? reply;
+  /// Focus-mode local watch history (no login). See [LocalHistory].
+  static late final Box<dynamic> localHistory;
 
   static Future<void> init() async {
     Hive.init(path.join(appSupportDirPath, 'hive'));
@@ -63,6 +65,13 @@ abstract final class GStorage {
           return deletedEntries > 4;
         },
       ).then((res) => watchProgress = res),
+      // 专注模式本地历史
+      Hive.openBox(
+        'localHistory',
+        compactionStrategy: (int entries, int deletedEntries) {
+          return deletedEntries > 10;
+        },
+      ).then((res) => localHistory = res),
     ]);
 
     if (Pref.saveReply) {
@@ -125,6 +134,7 @@ abstract final class GStorage {
       video.compact(),
       Accounts.account.compact(),
       watchProgress.compact(),
+      localHistory.compact(),
       ?reply?.compact(),
     ]);
   }
@@ -138,6 +148,7 @@ abstract final class GStorage {
       video.close(),
       Accounts.account.close(),
       watchProgress.close(),
+      localHistory.close(),
       ?reply?.close(),
     ]);
   }
@@ -151,6 +162,7 @@ abstract final class GStorage {
       video.clear(),
       Accounts.clear(),
       watchProgress.clear(),
+      localHistory.clear(),
       ?reply?.clear(),
     ]);
   }

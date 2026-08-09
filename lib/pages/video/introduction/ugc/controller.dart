@@ -124,6 +124,13 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
                 response.stat?.reply ?? 0;
           } catch (_) {}
         }
+        videoDetailCtr.plPlayerController.setHistoryMeta(
+          title: response.title,
+          cover: response.pic,
+          authorName: response.owner?.name,
+          authorMid: response.owner?.mid,
+          durationSec: response.duration,
+        );
       } catch (_) {}
       final pages = videoDetail.value.pages;
       if (pages != null && pages.isNotEmpty && cid.value == 0) {

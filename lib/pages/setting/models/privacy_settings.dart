@@ -2,6 +2,7 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/api_type.dart';
+import 'package:PiliPlus/utils/local_history.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -18,6 +19,41 @@ List<SettingsModel> get privacySettings => [
     title: '黑名单管理',
     subtitle: '已拉黑用户',
     leading: const Icon(Icons.block),
+  ),
+  NormalModel(
+    onTap: (context, setState) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('清空本地历史'),
+          content: const Text(
+            '将清除本机保存的观看记录（专注模式历史），不影响云端账号历史。此操作不可撤销。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: Get.back,
+              child: Text(
+                '取消',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Get.back();
+                await LocalHistory.clear();
+                SmartDialog.showToast('已清空本地观看记录');
+              },
+              child: const Text('确认清空'),
+            ),
+          ],
+        ),
+      );
+    },
+    title: '清空本地历史',
+    subtitle: '仅清除本机专注模式观看记录',
+    leading: const Icon(Icons.history_toggle_off_outlined),
   ),
   NormalModel(
     onTap: (context, setState) {

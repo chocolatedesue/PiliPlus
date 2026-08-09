@@ -44,6 +44,7 @@ import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/local_history.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -135,6 +136,15 @@ class PlPlayerController with BlockConfigMixin {
   int? _aid;
   String? _bvid;
   int? cid;
+
+  /// Optional display meta for [LocalHistory] upsert (set by video page).
+  String? historyTitle;
+  String? historyCover;
+  String? historyAuthorName;
+  int? historyAuthorMid;
+  int? historyDurationSec;
+  String? historyShowTitle;
+
   int? _epid;
   int? _seasonId;
   int? _pgcType;
@@ -1457,7 +1467,60 @@ class PlPlayerController with BlockConfigMixin {
   void removeStatusLister(ValueChanged<PlayerStatus> listener) =>
       _statusListeners.remove(listener);
 
+  /// Enrich local-history display fields (title/cover/UP). Safe anytime.
+  void setHistoryMeta({
+    String? title,
+    String? cover,
+    String? authorName,
+    int? authorMid,
+    int? durationSec,
+    String? showTitle,
+  }) {
+    if (title != null && title.isNotEmpty) historyTitle = title;
+    if (cover != null && cover.isNotEmpty) historyCover = cover;
+    if (authorName != null && authorName.isNotEmpty) {
+      historyAuthorName = authorName;
+    }
+    if (authorMid != null) historyAuthorMid = authorMid;
+    if (durationSec != null && durationSec > 0) historyDurationSec = durationSec;
+    if (showTitle != null && showTitle.isNotEmpty) historyShowTitle = showTitle;
+  }
+
+  void _upsertLocalHistory(int progress, {
+    dynamic aid,
+    dynamic bvid,
+    dynamic cid,
+    dynamic epid,
+    dynamic seasonId,
+    VideoType? videoType,
+  }) {
+    try {
+      LocalHistory.upsertFromPlayback(
+        aid: aid ?? _aid,
+        bvid: bvid ?? _bvid,
+        cid: cid ?? this.cid,
+        epid: epid ?? _epid,
+        seasonId: seasonId ?? _seasonId,
+        progress: progress,
+        videoType: videoType ?? _videoType,
+        title: historyTitle,
+        cover: historyCover,
+        authorName: historyAuthorName,
+        authorMid: historyAuthorMid,
+        duration: historyDurationSec,
+        showTitle: historyShowTitle,
+      );
+    } catch (_) {}
+  }
+
   // 记录播放记录
+  //
+  // Dual-write split (R1-F01 / AC1):
+  // - **Local** [LocalHistory]: never gated by login / [enableHeart] /
+  //   [Pref.historyPause]. Playing ticks, completed, and manual leave-page
+  //   all upsert when ids + progress allow.
+  // - **Cloud** [VideoHttp.heartBeat]: still gated by [enableHeart]
+  //   (set false when !Accounts.heartbeat.isLogin || Pref.historyPause).
   Future<void>? makeHeartBeat(
     int progress, {
     HeartBeatType type = .playing,
@@ -1470,45 +1533,74 @@ class PlPlayerController with BlockConfigMixin {
     dynamic pgcType,
     VideoType? videoType,
   }) {
-    if (isLive ||
-        !enableHeart ||
-        progress == 0 ||
-        (playerStatus.isPaused && !isManual)) {
-      return null;
+    if (isLive) return null;
+
+    var effectiveProgress = progress;
+    if (type == .completed &&
+        playerStatus.isCompleted &&
+        (durationInMilliseconds - positionInMilliseconds) <= 1000) {
+      effectiveProgress = -1;
     }
 
-    Future<void> send() {
-      return VideoHttp.heartBeat(
-        aid: aid ?? _aid,
-        bvid: bvid ?? _bvid,
-        cid: cid ?? this.cid,
-        progress: progress,
-        epid: epid ?? _epid,
-        seasonId: seasonId ?? _seasonId,
-        subType: pgcType ?? _pgcType,
-        videoType: videoType ?? _videoType,
-      );
-    }
+    final isCompletedType = type == .completed;
+    final allowLocal = LocalHistory.shouldRecordPlaybackTick(
+      isLive: false,
+      progress: effectiveProgress,
+      isCompletedType: isCompletedType,
+      isPaused: playerStatus.isPaused,
+      isManual: isManual,
+    );
 
+    // Cadence: same thresholds as cloud; advance once so local still ticks
+    // when enableHeart is false (unlogged / historyPause).
+    var due = false;
     switch (type) {
       case .playing:
-        if (progress - _heartDuration >= 5) {
+        if (allowLocal && progress - _heartDuration >= 5) {
           _heartDuration = progress;
-          return send();
+          due = true;
         }
       case .status:
-        if (progress - _heartDuration >= 2) {
+        if (allowLocal && progress - _heartDuration >= 2) {
           _heartDuration = progress;
-          return send();
+          due = true;
         }
       case .completed:
-        if (playerStatus.isCompleted &&
-            (durationInMilliseconds - positionInMilliseconds) <= 1000) {
-          progress = -1;
-        }
-        return send();
+        if (allowLocal) due = true;
     }
-    return null;
+    // Leave-page / explicit manual always attempts when policy allows.
+    if (isManual && allowLocal) {
+      due = true;
+    }
+
+    if (!due) return null;
+
+    // 1) Local — unconditional for due ticks (no login / enableHeart gate).
+    _upsertLocalHistory(
+      effectiveProgress,
+      aid: aid,
+      bvid: bvid,
+      cid: cid,
+      epid: epid,
+      seasonId: seasonId,
+      videoType: videoType,
+    );
+
+    // 2) Cloud — original enableHeart / pause gates only.
+    if (!enableHeart) return null;
+    if (playerStatus.isPaused && !isManual && type != .completed) return null;
+    if (progress == 0 && type != .completed) return null;
+
+    return VideoHttp.heartBeat(
+      aid: aid ?? _aid,
+      bvid: bvid ?? _bvid,
+      cid: cid ?? this.cid,
+      progress: effectiveProgress,
+      epid: epid ?? _epid,
+      seasonId: seasonId ?? _seasonId,
+      subType: pgcType ?? _pgcType,
+      videoType: videoType ?? _videoType,
+    );
   }
 
   void setPlayRepeat(PlayRepeat type) {

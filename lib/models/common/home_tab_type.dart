@@ -12,6 +12,7 @@ import 'package:PiliPlus/pages/rank/controller.dart';
 import 'package:PiliPlus/pages/rank/view.dart';
 import 'package:PiliPlus/pages/rcmd/controller.dart';
 import 'package:PiliPlus/pages/rcmd/view.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -47,7 +48,10 @@ enum HomeTabType implements EnumWithLabel {
     HomeTabType.rank => Get.find<RankController>,
     HomeTabType.bangumi ||
     HomeTabType.cinema => () => Get.find<PgcController>(tag: name),
-    HomeTabType.history => () => Get.find<HistoryController>(tag: 'all'),
+    HomeTabType.history => () => Get.find<HistoryController>(
+      // Focus home embeds local history (tag local_all).
+      tag: Pref.enableFocusMode ? 'local_all' : 'all',
+    ),
   };
 
   Widget get page => switch (this) {

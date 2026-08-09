@@ -22,6 +22,7 @@ import 'package:PiliPlus/utils/mobile_observer.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -536,19 +537,22 @@ class _MainAppState extends PopScopeState<MainApp>
   }
 
   Widget userAndSearchVertical() {
+    final focusHideSearch = Pref.enableFocusMode;
     return Column(
       children: [
         userAvatar(colorScheme: _colorScheme, mainController: _mainController),
-        const SizedBox(height: 8),
-        msgBadge(_mainController),
-        IconButton(
-          tooltip: '搜索',
-          icon: const Icon(
-            Icons.search_outlined,
-            semanticLabel: '搜索',
+        if (!focusHideSearch) ...[
+          const SizedBox(height: 8),
+          msgBadge(_mainController),
+          IconButton(
+            tooltip: '搜索',
+            icon: const Icon(
+              Icons.search_outlined,
+              semanticLabel: '搜索',
+            ),
+            onPressed: () => Get.toNamed('/search'),
           ),
-          onPressed: () => Get.toNamed('/search'),
-        ),
+        ],
       ],
     );
   }

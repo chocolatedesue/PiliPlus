@@ -64,6 +64,20 @@ class PgcIntroController extends CommonIntroController {
 
     super.onInit();
 
+    try {
+      final ep = pgcItem.episodes?.firstWhereOrNull((e) => e.epId == epId);
+      // PGC episode.duration is milliseconds.
+      final durMs = ep?.duration;
+      videoDetailCtr.plPlayerController.setHistoryMeta(
+        title: pgcItem.title,
+        cover: ep?.cover ?? pgcItem.cover,
+        showTitle: ep?.showTitle ?? ep?.longTitle,
+        durationSec: durMs == null
+            ? null
+            : durMs ~/ Duration.millisecondsPerSecond,
+      );
+    } catch (_) {}
+
     if (isPgc) {
       if (isLogin) {
         queryIsFollowed();

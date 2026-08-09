@@ -1,5 +1,6 @@
 import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/local_history.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,11 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
 class HistoryBaseController extends GetxController {
+  HistoryBaseController({this.useLocalHistory = false});
+
+  /// When true, clear/pause operate on local store only (focus path).
+  final bool useLocalHistory;
+
   RxBool pauseStatus = false.obs;
 
   RxBool enableMultiSelect = false.obs;
@@ -20,7 +26,9 @@ class HistoryBaseController extends GetxController {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('提示'),
-        content: const Text('啊叻？你要清空历史记录功能吗？'),
+        content: Text(
+          useLocalHistory ? '确认清空本地观看记录吗？' : '啊叻？你要清空历史记录功能吗？',
+        ),
         actions: [
           TextButton(
             onPressed: Get.back,
@@ -32,6 +40,12 @@ class HistoryBaseController extends GetxController {
           TextButton(
             onPressed: () async {
               Get.back();
+              if (useLocalHistory) {
+                await LocalHistory.clear();
+                SmartDialog.showToast('已清空本地观看记录');
+                onSuccess();
+                return;
+              }
               SmartDialog.showLoading(msg: '请求中');
               final res = await UserHttp.clearHistory(account: account);
               SmartDialog.dismiss();
@@ -49,7 +63,7 @@ class HistoryBaseController extends GetxController {
     );
   }
 
-  // 暂停观看历史
+  // 暂停观看历史（云端能力；本地路径不展示）
   void onPauseHistory(BuildContext context) {
     final pauseStatus = !this.pauseStatus.value;
     showDialog(

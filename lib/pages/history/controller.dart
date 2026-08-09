@@ -9,6 +9,7 @@ import 'package:PiliPlus/pages/history/base_controller.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
+import 'package:PiliPlus/utils/local_history.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:flutter/material.dart';
@@ -18,12 +19,19 @@ import 'package:get/get.dart';
 class HistoryController
     extends MultiSelectController<HistoryData, HistoryItemModel>
     with GetSingleTickerProviderStateMixin {
-  HistoryController(this.type);
+  HistoryController(this.type, {this.useLocalHistory = false});
+
+  /// Focus / local-only path. Cloud controllers keep the default false.
+  final bool useLocalHistory;
 
   /// Shared across root / embedded / typed History surfaces. Permanent so a
   /// disposing page never tears down base while another surface still uses it
-  /// (YQH-74 D2-history-embed).
-  late final baseCtr = Get.put(HistoryBaseController(), permanent: true);
+  /// (YQH-74 D2-history-embed). Local and cloud use separate tags.
+  late final baseCtr = Get.put(
+    HistoryBaseController(useLocalHistory: useLocalHistory),
+    tag: useLocalHistory ? 'local' : 'cloud',
+    permanent: true,
+  );
 
   Account get account => baseCtr.account;
 
@@ -34,6 +42,21 @@ class HistoryController
   int? max;
   int? viewAt;
 
+  /// Local keyword filter (title + authorName). Not the cloud /search route.
+  final RxString localQuery = ''.obs;
+
+  /// Local structured filter on `history.business` (`all` = no filter).
+  final RxString localBusiness = 'all'.obs;
+
+  static const List<({String value, String label})> businessFilters = [
+    (value: 'all', label: '全部类型'),
+    (value: 'archive', label: '视频'),
+    (value: 'pgc', label: '番剧'),
+    (value: 'live', label: '直播'),
+    (value: 'article', label: '专栏'),
+    (value: 'cheese', label: '课堂'),
+  ];
+
   @override
   RxInt get rxCount => baseCtr.checkedCount;
 
@@ -43,7 +66,9 @@ class HistoryController
   @override
   void onInit() {
     super.onInit();
-    historyStatus();
+    if (!useLocalHistory) {
+      historyStatus();
+    }
     queryData();
   }
 
@@ -63,6 +88,11 @@ class HistoryController
   bool customHandleResponse(bool isRefresh, Success<HistoryData> response) {
     HistoryData data = response.response;
     isEnd = data.list.isNullOrEmpty;
+    if (useLocalHistory) {
+      // Local list is fully loaded in one shot.
+      isEnd = true;
+      return false;
+    }
     max = data.list?.lastOrNull?.history.oid;
     viewAt = data.list?.lastOrNull?.viewAt;
 
@@ -108,6 +138,12 @@ class HistoryController
   }
 
   Future<void> _onDelete(Set<HistoryItemModel> removeList) async {
+    if (useLocalHistory) {
+      LocalHistory.removeMany(removeList);
+      afterDelete(removeList);
+      SmartDialog.showToast('已删除');
+      return;
+    }
     SmartDialog.showLoading(msg: '请求中');
     final res = await UserHttp.delHistory(
       removeList
@@ -135,13 +171,33 @@ class HistoryController
     );
   }
 
+  void applyLocalFilters({String? query, String? business}) {
+    if (query != null) localQuery.value = query;
+    if (business != null) localBusiness.value = business;
+    onReload();
+  }
+
   @override
-  Future<LoadingState<HistoryData>> customGetData() => UserHttp.historyList(
-    type: type ?? 'all',
-    max: max,
-    viewAt: viewAt,
-    account: account,
-  );
+  Future<LoadingState<HistoryData>> customGetData() async {
+    if (useLocalHistory) {
+      final list = LocalHistory.list(
+        query: localQuery.value,
+        business: localBusiness.value == 'all' ? null : localBusiness.value,
+        desc: true,
+      );
+      // Optional type tab filter for typed child pages.
+      final filtered = type == null || type == 'all'
+          ? list
+          : list.where((e) => e.history.business == type).toList();
+      return Success(HistoryData(list: filtered));
+    }
+    return UserHttp.historyList(
+      type: type ?? 'all',
+      max: max,
+      viewAt: viewAt,
+      account: account,
+    );
+  }
 
   @override
   void onClose() {

@@ -754,6 +754,15 @@ class VideoDetailController extends GetxController
       autoFullScreenFlag: autoFullScreenFlag,
     );
 
+    // Seed local-history display meta (args + duration); intro may enrich later.
+    plPlayerController.setHistoryMeta(
+      title: args['title'] as String?,
+      cover: cover.value.isNotEmpty ? cover.value : args['cover'] as String?,
+      durationSec: data.timeLength == null
+          ? null
+          : data.timeLength! ~/ Duration.millisecondsPerSecond,
+    );
+
     if (isClosed) return;
 
     if (!isFileSource) {
@@ -1204,29 +1213,31 @@ class VideoDetailController extends GetxController
     }
   }
 
+  /// Flush playback progress on leave. Local history must run even when
+  /// [PlPlayerController.enableHeart] is false (unlogged / historyPause);
+  /// cloud heartbeat stays gated inside [PlPlayerController.makeHeartBeat].
   void makeHeartBeat() {
-    if (plPlayerController.enableHeart &&
-        !plPlayerController.playerStatus.isCompleted &&
-        playedTime != null) {
-      try {
-        plPlayerController.makeHeartBeat(
-          data.timeLength != null
-              ? (data.timeLength! - playedTime!.inMilliseconds).abs() <= 1000
-                    ? -1
-                    : playedTime!.inSeconds
-              : playedTime!.inSeconds,
-          type: HeartBeatType.completed,
-          isManual: true,
-          aid: aid,
-          bvid: bvid,
-          cid: cid.value,
-          epid: isUgc ? null : epId,
-          seasonId: isUgc ? null : seasonId,
-          pgcType: isUgc ? null : pgcType,
-          videoType: videoType,
-        );
-      } catch (_) {}
+    if (plPlayerController.playerStatus.isCompleted || playedTime == null) {
+      return;
     }
+    try {
+      plPlayerController.makeHeartBeat(
+        data.timeLength != null
+            ? (data.timeLength! - playedTime!.inMilliseconds).abs() <= 1000
+                  ? -1
+                  : playedTime!.inSeconds
+            : playedTime!.inSeconds,
+        type: HeartBeatType.completed,
+        isManual: true,
+        aid: aid,
+        bvid: bvid,
+        cid: cid.value,
+        epid: isUgc ? null : epId,
+        seasonId: isUgc ? null : seasonId,
+        pgcType: isUgc ? null : pgcType,
+        videoType: videoType,
+      );
+    } catch (_) {}
   }
 
   @override
