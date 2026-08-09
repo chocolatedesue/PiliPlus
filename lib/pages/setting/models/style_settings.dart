@@ -51,7 +51,7 @@ List<SettingsModel> get styleSettings => [
     subtitle: '精简底栏为推荐/历史/我的，隐藏首页多 Tab 与相关推荐，默认开启后台播放',
     leading: const Icon(Icons.center_focus_strong_outlined),
     setKey: SettingBoxKey.enableFocusMode,
-    defaultVal: false,
+    defaultVal: true,
     onChanged: (value) => FocusMode.applyLive(),
   ),
   if (PlatformUtils.isDesktop) ...[

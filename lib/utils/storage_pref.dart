@@ -390,7 +390,7 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.showViewPoints, defaultValue: true);
 
   static bool get enableFocusMode =>
-      _setting.get(SettingBoxKey.enableFocusMode, defaultValue: false);
+      _setting.get(SettingBoxKey.enableFocusMode, defaultValue: true);
 
   static bool get showRelatedVideo {
     if (enableFocusMode) return false;
@@ -872,8 +872,10 @@ abstract final class Pref {
   static bool get enableTrending =>
       _setting.get(SettingBoxKey.enableHotKey, defaultValue: true);
 
-  static bool get enableSearchRcmd =>
-      _setting.get(SettingBoxKey.enableSearchRcmd, defaultValue: true);
+  static bool get enableSearchRcmd {
+    if (enableFocusMode) return false;
+    return _setting.get(SettingBoxKey.enableSearchRcmd, defaultValue: true);
+  }
 
   static bool get enableSaveLastData =>
       _setting.get(SettingBoxKey.enableSaveLastData, defaultValue: true);

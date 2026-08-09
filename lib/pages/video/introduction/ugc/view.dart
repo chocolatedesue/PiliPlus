@@ -39,6 +39,7 @@ import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -730,7 +731,10 @@ class _UgcIntroPanelState extends State<UgcIntroPanel> {
                 () {
                   if (mid != null) {
                     feedBack();
-                    if (!isPortrait && introController.horizontalMemberPage) {
+                    // Focus Mode: open in-player UP sheet even in portrait so
+                    // same-UP recent is one tap away (E1 option 2, low-cost).
+                    if (Pref.enableFocusMode ||
+                        (!isPortrait && introController.horizontalMemberPage)) {
                       widget.onShowMemberPage(mid);
                     } else {
                       Get.toNamed(

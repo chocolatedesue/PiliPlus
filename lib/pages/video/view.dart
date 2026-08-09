@@ -40,6 +40,7 @@ import 'package:PiliPlus/pages/video/introduction/ugc/widgets/season.dart';
 import 'package:PiliPlus/pages/video/member/controller.dart';
 import 'package:PiliPlus/pages/video/member/view.dart';
 import 'package:PiliPlus/pages/video/related/view.dart';
+import 'package:PiliPlus/pages/video/up_recent/view.dart';
 import 'package:PiliPlus/pages/video/reply/controller.dart';
 import 'package:PiliPlus/pages/video/reply/view.dart';
 import 'package:PiliPlus/pages/video/view_point/view.dart';
@@ -66,6 +67,7 @@ import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
@@ -899,8 +901,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       return childSplit(Style.aspectRatio16x9);
     }
     final introHeight = maxHeight - height - padding.top;
-    final showIntro =
-        videoDetailController.isUgc && videoDetailController.showRelatedVideo;
+    final showRelated = videoDetailController.showRelatedVideo;
+    final showUpRecent =
+        Pref.enableFocusMode && videoDetailController.isUgc && !showRelated;
+    final showIntro = videoDetailController.isUgc && (showRelated || showUpRecent);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -942,7 +946,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   buildTabBar(
-                    introText: '相关视频',
+                    introText: showUpRecent ? '同 UP 最近' : '相关视频',
                     showIntro: videoDetailController.isFileSource
                         ? true
                         : showIntro,
@@ -960,10 +964,28 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                               controller:
                                   videoDetailController.effectiveIntroScrollCtr,
                               slivers: [
-                                RelatedVideoPanel(
-                                  key: videoRelatedKey,
-                                  heroTag: heroTag,
-                                ),
+                                if (showUpRecent)
+                                  Obx(() {
+                                    final mid = ugcIntroController
+                                        .videoDetail.value.owner?.mid;
+                                    if (mid == null) {
+                                      return const SliverToBoxAdapter();
+                                    }
+                                    return UpRecentPanel(
+                                      key: videoRelatedKey,
+                                      heroTag: heroTag,
+                                      mid: mid,
+                                      videoDetailController:
+                                          videoDetailController,
+                                      ugcIntroController: ugcIntroController,
+                                      showTitle: false,
+                                    );
+                                  })
+                                else
+                                  RelatedVideoPanel(
+                                    key: videoRelatedKey,
+                                    heroTag: heroTag,
+                                  ),
                               ],
                             ),
                           ),
@@ -1661,6 +1683,35 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
               ),
             ),
             RelatedVideoPanel(key: videoRelatedKey, heroTag: heroTag),
+          ] else if (needRelated &&
+              Pref.enableFocusMode &&
+              videoDetailController.isUgc) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: Style.safeSpace,
+                ),
+                child: Divider(
+                  height: 1,
+                  indent: 12,
+                  endIndent: 12,
+                  color: colorScheme.outline.withValues(alpha: .08),
+                ),
+              ),
+            ),
+            Obx(() {
+              final mid = ugcIntroController.videoDetail.value.owner?.mid;
+              if (mid == null) {
+                return const SliverToBoxAdapter();
+              }
+              return UpRecentPanel(
+                key: videoRelatedKey,
+                heroTag: heroTag,
+                mid: mid,
+                videoDetailController: videoDetailController,
+                ugcIntroController: ugcIntroController,
+              );
+            }),
           ],
         ] else
           PgcIntroPage(

@@ -1,5 +1,9 @@
 name: Build
 
+concurrency:
+    group: piliplus-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
 on:
     pull_request:
         types:
@@ -9,6 +13,8 @@ on:
             - ready_for_review
         paths-ignore:
             - "**.md"
+            - "docs/**"
+            - "LICENSE"
     workflow_dispatch:
         inputs:
             build_android:
@@ -47,12 +53,64 @@ on:
                 default: ""
                 type: string
 
+# Default least privilege; jobs that publish releases/artifacts elevate below.
+permissions:
+    contents: read
+
 jobs:
+    # Phase B soft quality gate: reports analyze/test; does not hard-block the
+    # matrix when the tree already has pre-existing analyzer debt.
+    quality:
+        name: Analyze & Test
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
+
+            - name: Setup Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  channel: stable
+                  flutter-version-file: pubspec.yaml
+                  cache: true
+
+            - name: Pub get
+              run: flutter pub get
+
+            - name: Analyze
+              id: analyze
+              continue-on-error: true
+              run: flutter analyze
+
+            - name: Test (if present)
+              continue-on-error: true
+              run: |
+                  if compgen -G "test/**/*_test.dart" > /dev/null || compgen -G "test/*_test.dart" > /dev/null; then
+                    flutter test
+                  else
+                    echo "No tests; skip"
+                  fi
+
+            - name: Analyze status (soft gate)
+              run: |
+                  if [ "${{ steps.analyze.outcome }}" != "success" ]; then
+                    echo "::warning::flutter analyze reported issues (soft gate; builds still run). Harden when tree is clean."
+                  else
+                    echo "flutter analyze clean"
+                  fi
+
     android:
-        if: ${{ (github.event_name == 'pull_request') || github.event.inputs.build_android == 'true' }}
+        needs: quality
+        if: ${{ always() && !cancelled() && ((github.event_name == 'pull_request') || github.event.inputs.build_android == 'true') }}
         name: Release Android
         runs-on: ubuntu-latest
-        permissions: write-all
+        permissions:
+            contents: write
+            actions: write
 
         steps:
             - name: 代码迁出
@@ -68,7 +126,9 @@ jobs:
                   cache: "gradle"
                   cache-dependency-path: |
                       android/*.gradle*
+                      android/**/*.gradle*
                       android/**/gradle-wrapper.properties
+                      pubspec.lock
 
             - name: 安装Flutter
               uses: subosito/flutter-action@v2
@@ -105,11 +165,13 @@ jobs:
             - name: Flutter Build Dev Apk
               if: ${{ github.event_name == 'pull_request' }}
               run: |
-                  flutter build apk --release --split-per-abi --android-project-arg dev=1 --pub
+                  # Phase B: PR builds arm64-only for speed; dispatch/release keep full split-per-abi.
+                  flutter build apk --release --split-per-abi --target-platform android-arm64 --android-project-arg dev=1 --pub
 
             - name: Rename
               run: |
                   for file in build/app/outputs/flutter-apk/app-*-release.apk; do
+                    [ -e "$file" ] || continue
                     abi=$(echo "$file" | sed -E 's|.*app-(.*)-release\.apk|\1|')
                     mv "$file" "PiliPlus_android_${{ env.version }}_${abi}.apk"
                   done
@@ -129,8 +191,10 @@ jobs:
                   archive: false
                   name: Android_arm64-v8a
                   path: PiliPlus_android_*_arm64-v8a.apk
+                  if-no-files-found: warn
 
             - name: 上传
+              if: ${{ github.event_name == 'workflow_dispatch' }}
               uses: actions/upload-artifact@v7
               with:
                   archive: false
@@ -138,6 +202,7 @@ jobs:
                   path: PiliPlus_android_*_armeabi-v7a.apk
 
             - name: 上传
+              if: ${{ github.event_name == 'workflow_dispatch' }}
               uses: actions/upload-artifact@v7
               with:
                   archive: false
@@ -145,29 +210,41 @@ jobs:
                   path: PiliPlus_android_*_x86_64.apk
 
     ios:
-        if: ${{ (github.event_name == 'pull_request') || github.event.inputs.build_ios == 'true' }}
+        needs: quality
+        if: ${{ always() && !cancelled() && ((github.event_name == 'pull_request') || github.event.inputs.build_ios == 'true') }}
         uses: ./.github/workflows/ios.yml
-        permissions: write-all
+        permissions:
+            contents: write
+            actions: write
         with:
             tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
 
     mac:
-        if: ${{ github.event.inputs.build_mac == 'true' }}
+        needs: quality
+        if: ${{ always() && !cancelled() && github.event.inputs.build_mac == 'true' }}
         uses: ./.github/workflows/mac.yml
-        permissions: write-all
+        permissions:
+            contents: write
+            actions: write
         with:
             tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
 
     win_x64:
-        if: ${{ (github.event_name == 'pull_request') || github.event.inputs.build_win_x64 == 'true' }}
+        needs: quality
+        if: ${{ always() && !cancelled() && ((github.event_name == 'pull_request') || github.event.inputs.build_win_x64 == 'true') }}
         uses: ./.github/workflows/win_x64.yml
-        permissions: write-all
+        permissions:
+            contents: write
+            actions: write
         with:
             tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
 
     linux_x64:
-        if: ${{ github.event.inputs.build_linux_x64 == 'true' }}
+        needs: quality
+        if: ${{ always() && !cancelled() && github.event.inputs.build_linux_x64 == 'true' }}
         uses: ./.github/workflows/linux_x64.yml
-        permissions: write-all
+        permissions:
+            contents: write
+            actions: write
         with:
             tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}

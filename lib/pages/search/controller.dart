@@ -60,7 +60,7 @@ class BaseSearchController extends GetxController {
   final recordSearchHistory = Pref.recordSearchHistory.obs;
   final searchSuggestion = Pref.searchSuggestion;
   final enableTrending = Pref.enableTrending;
-  final enableSearchRcmd = Pref.enableSearchRcmd;
+  bool get enableSearchRcmd => Pref.enableSearchRcmd;
 
   @override
   void onInit() {
@@ -128,8 +128,10 @@ class SSearchController extends GetxController
       searchSuggestList = <SearchSuggestItem>[].obs;
     }
 
+    // Always allocate so a live Pref.enableSearchRcmd flip cannot hit an
+    // uninitialized late field; load only when effectively enabled.
+    recommendData = LoadingState<SearchRcmdData>.loading().obs;
     if (enableSearchRcmd) {
-      recommendData = LoadingState<SearchRcmdData>.loading().obs;
       queryRecommendList();
     }
   }

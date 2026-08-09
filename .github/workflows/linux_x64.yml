@@ -1,5 +1,10 @@
 name: Build for Linux x64
 
+concurrency:
+  group: piliplus-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+
 on:
   workflow_call:
     inputs:

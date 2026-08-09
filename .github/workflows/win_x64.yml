@@ -1,5 +1,10 @@
 name: Build for Windows x64
 
+concurrency:
+  group: piliplus-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+
 on:
   workflow_call:
     inputs:
@@ -25,6 +30,7 @@ jobs:
         with:
           channel: stable
           flutter-version-file: pubspec.yaml
+          cache: true
 
       - name: Apply Patch
         shell: pwsh
