@@ -60,12 +60,19 @@ if ls PiliPlus*-android.apk PiliPlus_android.apk 2>/dev/null | grep -q .; then
   fi
 fi
 
-sha256sum PiliPlus* > SHA256SUMS.txt 2>/dev/null || sha256sum ./* > SHA256SUMS.txt
+# Build checksums from product files only (exclude existing SHA256SUMS.txt to avoid double-upload)
+mapfile -t SUM_SRC < <(printf '%s
+' "${FILES[@]}" | grep -v '^SHA256SUMS\.txt$' || true)
+if [[ ${#SUM_SRC[@]} -gt 0 ]]; then
+  sha256sum "${SUM_SRC[@]}" > SHA256SUMS.txt
+else
+  sha256sum ./* > SHA256SUMS.txt 2>/dev/null || true
+fi
 echo "SHA256SUMS.txt:"
 cat SHA256SUMS.txt
 
 ARGS=(release upload "$TAG" -R "$REPO" --clobber)
-for f in "${FILES[@]}" SHA256SUMS.txt; do
+for f in "${SUM_SRC[@]}" SHA256SUMS.txt; do
   [[ -f "$f" ]] || continue
   ARGS+=("$f")
 done
