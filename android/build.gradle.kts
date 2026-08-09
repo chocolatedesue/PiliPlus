@@ -39,16 +39,24 @@ subprojects {
                 }
             }
 
+            // Clamp plugin compileSdk to Flutter 3.44 baseline (36).
+            // Raise plugins below 36; also cap plugins above 36 (e.g. permission_handler_android 14 @ 37)
+            // so R8 does not require android-37 on hosts that only ship android-36.
             val pluginCompileSdkStr = androidExtension.compileSdkVersion
             val pluginCompileSdk = pluginCompileSdkStr
                 ?.removePrefix("android-")
                 ?.toIntOrNull()
-            if (pluginCompileSdk != null && pluginCompileSdk < 36) {
+            if (pluginCompileSdk != null && pluginCompileSdk != 36) {
+                val reason = if (pluginCompileSdk < 36) {
+                    "to work around https://issuetracker.google.com/issues/199180389"
+                } else {
+                    "to match Flutter compileSdk baseline and avoid missing android-$pluginCompileSdk platform"
+                }
                 project.logger.error(
                     "Warning: Overriding compileSdk version in Flutter plugin: ${project.name} " +
-                            "from $pluginCompileSdk to 36 (to work around https://issuetracker.google.com/issues/199180389).\n" +
+                            "from $pluginCompileSdk to 36 ($reason).\n" +
                             "If there is not a new version of ${project.name}, consider filing an issue against ${project.name} " +
-                            "to increase their compileSdk to the latest (otherwise try updating to the latest version)."
+                            "to align their compileSdk with the Flutter baseline (otherwise try updating to the latest version)."
                 )
                 androidExtension.setCompileSdkVersion(36)
             }
