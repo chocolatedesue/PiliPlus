@@ -180,8 +180,8 @@ class PlPlayerController with BlockConfigMixin {
 
   bool isMuted = false;
 
-  /// 听视频
-  late final RxBool onlyPlayAudio = false.obs;
+  /// 听视频 / 仅播放音频（seeded from Pref; VOD open-path uses audio URL only）
+  late final RxBool onlyPlayAudio = Pref.onlyPlayAudio.obs;
 
   /// 镜像
   late final RxBool flipX = false.obs;
@@ -1718,6 +1718,9 @@ class PlPlayerController with BlockConfigMixin {
 
   void setOnlyPlayAudio() {
     onlyPlayAudio.toggle();
+    if (!tempPlayerConf) {
+      setting.put(SettingBoxKey.onlyPlayAudio, onlyPlayAudio.value);
+    }
     videoPlayerController?.setVideoTrack(onlyPlayAudio.value ? .no() : .auto());
   }
 

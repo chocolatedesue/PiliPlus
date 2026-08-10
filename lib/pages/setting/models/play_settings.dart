@@ -209,8 +209,15 @@ List<SettingsModel> get playSettings => [
       subtitle: '进入后台时继续播放',
       leading: Icon(Icons.motion_photos_pause_outlined),
       setKey: SettingBoxKey.continuePlayInBackground,
-      defaultVal: false,
+      defaultVal: true,
     ),
+  const SwitchModel(
+    title: '仅播放音频',
+    subtitle: '听视频：点播有独立音轨时仅打开音频流；直播走仅音频模式。默认关闭',
+    leading: Icon(Icons.headphones_outlined),
+    setKey: SettingBoxKey.onlyPlayAudio,
+    defaultVal: false,
+  ),
   if (Platform.isAndroid) ...[
     SwitchModel(
       title: '后台画中画',

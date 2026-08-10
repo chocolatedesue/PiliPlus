@@ -890,7 +890,7 @@ abstract final class Pref {
   static PlayRepeat get playRepeat =>
       PlayRepeat.values[_video.get(
         VideoBoxKey.playRepeat,
-        defaultValue: PlayRepeat.pause.index,
+        defaultValue: PlayRepeat.listCycle.index,
       )];
 
   static int get cacheVideoFit =>
@@ -900,9 +900,13 @@ abstract final class Pref {
     if (enableFocusMode) return true;
     return _setting.get(
       SettingBoxKey.continuePlayInBackground,
-      defaultValue: false,
+      defaultValue: true,
     );
   }
+
+  /// VOD/live audio-only mode (听视频 / 仅播放音频). Default off.
+  static bool get onlyPlayAudio =>
+      _setting.get(SettingBoxKey.onlyPlayAudio, defaultValue: false);
 
   static bool get directExitOnBack =>
       _setting.get(SettingBoxKey.directExitOnBack, defaultValue: false);

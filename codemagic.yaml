@@ -103,7 +103,12 @@ workflows:
             echo "symlinked $SDK_ROOT/platforms/android-37 -> android-37.0"
           fi
           ls -la "$SDK_ROOT/platforms" || true
-          BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
+          # Single source: pubspec.yaml version name (e.g. 2.5.0); do not hardcode 2.1.*
+          if [ -z "${BUILD_NAME:-}" ]; then
+            BUILD_NAME="$(sed -nE 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' pubspec.yaml | head -1)"
+            BUILD_NAME="${BUILD_NAME:-0.0.0}"
+          fi
+          echo "BUILD_NAME=$BUILD_NAME BUILD_NUMBER=$PROJECT_BUILD_NUMBER"
           flutter build apk --release --split-per-abi \
             --build-name="$BUILD_NAME" \
             --build-number="$PROJECT_BUILD_NUMBER"
@@ -173,7 +178,12 @@ workflows:
           flutter analyze || echo "WARN: flutter analyze exited non-zero; continuing build"
       - name: Build Flutter macOS (release, unsigned)
         script: |
-          BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
+          # Single source: pubspec.yaml version name (e.g. 2.5.0); do not hardcode 2.1.*
+          if [ -z "${BUILD_NAME:-}" ]; then
+            BUILD_NAME="$(sed -nE 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' pubspec.yaml | head -1)"
+            BUILD_NAME="${BUILD_NAME:-0.0.0}"
+          fi
+          echo "BUILD_NAME=$BUILD_NAME BUILD_NUMBER=${PROJECT_BUILD_NUMBER}"
           flutter build macos --release \
             --build-name="$BUILD_NAME" \
             --build-number="${PROJECT_BUILD_NUMBER}"
@@ -236,7 +246,12 @@ workflows:
           flutter analyze || echo "WARN: flutter analyze exited non-zero; continuing build"
       - name: Build Flutter Windows (release)
         script: |
-          BUILD_NAME="${BUILD_NAME:-2.1.${PROJECT_BUILD_NUMBER}}"
+          # Single source: pubspec.yaml version name (e.g. 2.5.0); do not hardcode 2.1.*
+          if [ -z "${BUILD_NAME:-}" ]; then
+            BUILD_NAME="$(sed -nE 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' pubspec.yaml | head -1)"
+            BUILD_NAME="${BUILD_NAME:-0.0.0}"
+          fi
+          echo "BUILD_NAME=$BUILD_NAME BUILD_NUMBER=${PROJECT_BUILD_NUMBER}"
           flutter build windows --release \
             --build-name="$BUILD_NAME" \
             --build-number="${PROJECT_BUILD_NUMBER}"

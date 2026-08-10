@@ -570,19 +570,10 @@ class HeaderControlState extends State<HeaderControl>
                             return ActionRowLineItem(
                               iconData: Icons.headphones,
                               onTap: () {
-                                plPlayerController.onlyPlayAudio.value =
-                                    !onlyPlayAudio;
-                                final player =
-                                    plPlayerController.videoPlayerController!;
-                                if (onlyPlayAudio &&
-                                    player.state.tracks.video.length <= 2) {
-                                  videoDetailCtr.playerInit();
-                                } else {
-                                  player.setProperty(
-                                    'file-local-options/vid',
-                                    onlyPlayAudio ? 'auto' : 'no',
-                                  );
-                                }
+                                // Persist + toggle; re-open so enable drops video
+                                // CDN (audio-only Media) and disable restores dual.
+                                plPlayerController.setOnlyPlayAudio();
+                                videoDetailCtr.playerInit();
                               },
                               text: " 听视频 ",
                               selectStatus: onlyPlayAudio,
